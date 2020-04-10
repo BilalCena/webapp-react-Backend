@@ -3,6 +3,29 @@ const cors = require("cors");
 const express = require("express");
 const app = express();
 const bodypar = require("body-parser");
+
+const exphbs = require("express-handlebars");
+const path = require("path");
+
+//DB FOR SEARCH/GIG SEQUEL
+const db = require("./config/database");
+
+//TEST DB FOR SEARCH/GIG SEQUEL
+db
+  .authenticate()
+  .then(() => console.log("Database YOHOOOO "))
+  .catch(() => console.log("error" + err)) *
+  //Gig/SEARCH routes
+  app.use("/gigs", require("./routes/gigs"));
+
+//HANDLEBARS
+app.engine("handlebars", exphbs({ defaultLayout: "main" }));
+app.set("view engine", "handlebars");
+
+/*app.engine('handlebars', exphbs({defaultLayout: 'main'}));*/
+
+/*ALL ABOVE IS FOR SEARCH PAGE*/
+
 app.use(cors());
 app.use(bodypar.json());
 var mysqlconnec = mysql.createConnection({
@@ -63,7 +86,7 @@ app.post("/signup", (req, res) => {
   );
 });
 
-app.get("/reserve", (req, res) => {
+app.get("/reserve/", (req, res) => {
   mysqlconnec.query("Select * from reservations", (err, rows, fields) => {
     if (!err) res.send(rows);
     else console.log(err);
@@ -94,6 +117,27 @@ app.post("/reserve", (req, res) => {
       } else {
         console.log(err);
         res.send("Ohho! Error Reserving");
+      }
+    }
+  );
+});
+
+app.post("/hakun", (req, res) => {
+  let emp = req.body;
+  console.log("HELLO Working email2");
+  console.log(emp.RestName);
+
+  mysqlconnec.query(
+    "SELECT * FROM restaurants WHERE RestName =?",
+    [emp.RestName],
+    (err, rows, fields) => {
+      if (rows.length > 0) {
+        console.log("Working");
+        res.send(rows);
+        
+      } else {
+        console.log(err);
+        res.send("No ID found");
       }
     }
   );
