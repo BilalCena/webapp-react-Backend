@@ -73,23 +73,25 @@ mysqlconnec.connect((err) => {
 app.post('/gigs/add', (req, res) => {
     let emp = req.body;
     console.log("RESTADD Working");
-    console.log(emp.try1);
+    console.log(emp.RestName);
     var sql =
-      "INSERT INTO trytables(try1,try2) VALUES(?,?)";
+      "INSERT INTO restaurants(RestName, Cuisine, Location, Rating) VALUES(?,?,?,?)";
     mysqlconnec.query(
       sql,
       [
-        emp.try1,
-        emp.try2
+        emp.RestName,
+        emp.Cuisine,
+        emp.Location,
+        emp.Rating
       ],
       (err, row, fields) => {
         if (!err) {
           console.log(row);
           console.log("Working");
-          res.send("Reservation Successful!");
+          res.send("Restaurant Added!");
         } else {
           console.log(err);
-          res.send("Ohho! Error Reserving");
+          res.send("Ohho! Error Adding Restaurant");
         }
       }
     );
