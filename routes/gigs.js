@@ -43,7 +43,7 @@ router.get('/show', (req,res) => {
 
 
 
-const mysql = require("mysql");
+/*const mysql = require("mysql");
 const app = express();
 const cors = require("cors");
 const bodypar = require("body-parser");
@@ -114,7 +114,7 @@ app.post('/show', (req, res) => {
     
 
 }) */
+/*
 
 
-
-module.exports = router;
+module.exports = router;*/

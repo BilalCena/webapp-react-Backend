@@ -3,20 +3,12 @@ const cors = require("cors");
 const express = require("express");
 const app = express();
 const bodypar = require("body-parser");
+const jwt=require("jsonwebtoken");
 
 const exphbs = require("express-handlebars");
 const path = require("path");
 
-//DB FOR SEARCH/GIG SEQUEL
-const db = require("./config/database");
 
-//TEST DB FOR SEARCH/GIG SEQUEL
-db
-  .authenticate()
-  .then(() => console.log("Database YOHOOOO "))
-  .catch(() => console.log("error" + err)) *
-  //Gig/SEARCH routes
-  app.use("/gigs", require("./routes/gigs"));
 
 //HANDLEBARS
 app.engine("handlebars", exphbs({ defaultLayout: "main" }));
@@ -31,7 +23,7 @@ app.use(bodypar.json());
 var mysqlconnec = mysql.createConnection({
   host: "127.0.0.1",
   user: "root",
-  password: "password",
+  password: "admin",
   database: "webapp",
   multipleStatements: true,
 });
@@ -54,12 +46,45 @@ app.get("/", (req, res) => {
 app.post("/login", (req, res) => {
   let a = req.body;
   mysqlconnec.query(
-    "Select * from users where Email =? and Password = ?",
+    "Select * from userss where Email =? and Password = ?",
     [a.Email, a.Password],
     (err, row, field) => {
       if (row.length > 0) {
-        res.send("Success");
-      } else {
+        if(row[0].usertypeid==1){
+        console.log(row)
+          const user={
+            id:row[0].userid,
+            name:row[0].Name,
+            email:a.Email,
+            typeid:row[0].usertypeid
+          }
+          jwt.sign({user},'secretkey',(err,token)=>
+          {
+            var type="customer"
+            console.log(token)
+            
+res.json({token,type});
+          })
+      
+      
+      }
+     else if(row[0].usertypeid==2){
+        console.log(row)
+          const user={
+            id:row[0].userid,
+            name:row[0].Name,
+            email:a.Email,
+            typeid:row[0].usertypeid,
+            restname:row[0].restadmin
+          }
+          jwt.sign({user},'secretkey',(err,token)=>
+          {
+            var type="Admin"
+res.json({token,type});
+          })
+      
+      }    
+    } else {
         res.send("False");
       }
     }
@@ -68,10 +93,10 @@ app.post("/login", (req, res) => {
 app.post("/signup", (req, res) => {
   let emp = req.body;
   var sql =
-    "INSERT INTO users(Name,Gender,Phone,Email,Password) VALUES(?,?,?,?,?)";
+    "INSERT INTO userss(Email,Password,Name,Gender,Phone,usertypeid) VALUES(?,?,?,?,?,?)";
   mysqlconnec.query(
     sql,
-    [emp.Name, emp.Gender, emp.Phone, emp.Email, emp.Password],
+    [emp.Email, emp.Password, emp.Name, emp.Gender, emp.Phone,emp.usertype],
     (err, row, fields) => {
       if (!err) {
         console.log(row);
@@ -92,13 +117,22 @@ app.get("/reserve/", (req, res) => {
     else console.log(err);
   });
 });
+app.get("/getrestraunt", (req, res) => {
+  mysqlconnec.query("Select * from restaurants", (err, rows, fields) => {
+    if (!err){
+      console.log('Hello')
+      res.send(rows)
+    }
+    else console.log(err);
+  });
+});
 
 app.post("/reserve", (req, res) => {
   let emp = req.body;
   console.log("HELLO Working email2");
   console.log(emp.email);
   var sql =
-    "INSERT INTO reservations(noofpeople,reservationname,phone,timereservation,comments,email) VALUES(?,?,?,?,?,?)";
+    "INSERT INTO reservations(noofpeople,reservationname,phone,timereservation,comments,email,restName) VALUES(?,?,?,?,?,?,?)";
   mysqlconnec.query(
     sql,
     [
@@ -108,6 +142,7 @@ app.post("/reserve", (req, res) => {
       emp.timereservation,
       emp.comments,
       emp.email,
+      emp.restname
     ],
     (err, row, fields) => {
       if (!err) {
@@ -142,3 +177,63 @@ app.post("/hakun", (req, res) => {
     }
   );
 });
+app.get("/getrestrauntss",verifyToken ,(req, res) => {
+  
+  
+jwt.verify(req.token,'secretkey',(err,authData)=>{
+if(err){
+  res.send('error')
+} else{
+console.log('hello')
+  mysqlconnec.query(
+    "SELECT * FROM reservations WHERE restName =?",
+    [authData.user.restname],
+    (err, rows, fields) => {
+      if (rows.length > 0) {
+        
+        res.send(rows);
+        
+      } else {
+        console.log(err);
+        res.send("No ID found");
+      }
+    }
+  );
+}})});
+app.post('/add', (req, res) => {
+  let emp = req.body;
+  console.log("RESTADD Working");
+  console.log(emp.RestName);
+  var sql =
+    "INSERT INTO restaurants(RestName, Cuisine, Location, Rating) VALUES(?,?,?,?)";
+  mysqlconnec.query(
+    sql,
+    [
+      emp.RestName,
+      emp.Cuisine,
+      emp.Location,
+      emp.Rating
+    ],
+    (err, row, fields) => {
+      if (!err) {
+        console.log(row);
+        console.log("Working");
+        res.send("Restaurant Added!");
+      } else {
+        console.log(err);
+        res.send("Ohho! Error Adding Restaurant");
+      }
+    }
+  );
+});
+function verifyToken(req,res,next){
+  const header=req.headers['authorization'];
+  if(typeof header!== 'undefined'){
+    req.token=header;
+    next();
+  } 
+  else{
+    res.send("Forbidden")
+  }
+
+}
