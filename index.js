@@ -77,13 +77,29 @@ res.json({token,type});
             typeid:row[0].usertypeid,
             restname:row[0].restadmin
           }
-          jwt.sign({user},'secretkey',(err,token)=>
+          jwt.sign({user},'adminkey',(err,token)=>
           {
             var type="Admin"
 res.json({token,type});
           })
       
-      }    
+      }
+      else if(row[0].usertypeid==3){
+        console.log(row)
+          const user={
+            id:row[0].userid,
+            name:row[0].Name,
+            email:a.Email,
+            typeid:row[0].usertypeid,
+            restname:row[0].restadmin
+          }
+          jwt.sign({user},'superadminkey',(err,token)=>
+          {
+            var type="Super_Admin"
+res.json({token,type});
+          })
+      
+      }        
     } else {
         res.send("False");
       }
@@ -110,6 +126,26 @@ app.post("/signup", (req, res) => {
     }
   );
 });
+app.post("/add", (req, res) => {
+  let emp = req.body;
+  var sql =
+    "INSERT INTO restaurants(RestName,Cuisine,Location,Rating) VALUES(?,?,?,?)";
+  mysqlconnec.query(
+    sql,
+    [emp.RestName, emp.Cuisine, emp.Location, emp.Rating],
+    (err, row, fields) => {
+      if (!err) {
+        console.log(row);
+        console.log("BELLO");
+        res.send("Congrats! Restaurant added");
+      } else {
+        console.log(err);
+
+        res.send("Ohho! Error Signing Up");
+      }
+    }
+  );
+});
 
 app.get("/reserve/", (req, res) => {
   mysqlconnec.query("Select * from reservations", (err, rows, fields) => {
@@ -127,12 +163,17 @@ app.get("/getrestraunt", (req, res) => {
   });
 });
 
-app.post("/reserve", (req, res) => {
+app.post("/reserve",verifyToken ,(req, res) => {
+  jwt.verify(req.token,'secretkey',(err,authData)=>{
+    if(err){
+        res.sendStatus(403);
+
+    } else{
   let emp = req.body;
   console.log("HELLO Working email2");
   console.log(emp.email);
   var sql =
-    "INSERT INTO reservations(noofpeople,reservationname,phone,timereservation,comments,email,restName) VALUES(?,?,?,?,?,?,?)";
+    "INSERT INTO reservations(noofpeople,reservationname,phone,timereservation,comments,email,restName,userid) VALUES(?,?,?,?,?,?,?,?)";
   mysqlconnec.query(
     sql,
     [
@@ -142,7 +183,8 @@ app.post("/reserve", (req, res) => {
       emp.timereservation,
       emp.comments,
       emp.email,
-      emp.restname
+      emp.restname,
+      authData.user.id
     ],
     (err, row, fields) => {
       if (!err) {
@@ -154,8 +196,36 @@ app.post("/reserve", (req, res) => {
         res.send("Ohho! Error Reserving");
       }
     }
-  );
-});
+  );}
+})});
+app.get("/mybookings",verifyToken ,(req, res) => {
+  jwt.verify(req.token,'secretkey',(err,authData)=>{
+    if(err){
+        res.sendStatus(403);
+
+    } else{
+
+  console.log("HELLO Working email2");
+  
+  var sql =
+    "SELECT * FROM reservations where userid=?"
+  mysqlconnec.query(
+    sql,
+    [
+     authData.user.id
+    ],
+    (err, row, fields) => {
+      if (!err) {
+        console.log(row);
+        console.log("Working");
+        res.send(row);
+      } else {
+        console.log(err);
+        res.send("Ohho! Error Reserving");
+      }
+    }
+  );}
+})});
 
 app.post("/hakun", (req, res) => {
   let emp = req.body;
@@ -163,11 +233,12 @@ app.post("/hakun", (req, res) => {
   console.log(emp.RestName);
 
   mysqlconnec.query(
-    "SELECT * FROM restaurants WHERE RestName =?",
+    "SELECT * FROM restaurants WHERE RestName LIKE ?",
     [emp.RestName],
     (err, rows, fields) => {
-      if (rows.length > 0) {
+      if (!err) {
         console.log("Working");
+        console.log(rows)
         res.send(rows);
         
       } else {
@@ -180,14 +251,14 @@ app.post("/hakun", (req, res) => {
 app.get("/getrestrauntss",verifyToken ,(req, res) => {
   
   
-jwt.verify(req.token,'secretkey',(err,authData)=>{
+jwt.verify(req.token,'adminkey',(err,authData)=>{
 if(err){
   res.send('error')
 } else{
 console.log('hello')
   mysqlconnec.query(
-    "SELECT * FROM reservations WHERE restName =?",
-    [authData.user.restname],
+    "SELECT * FROM reservations WHERE restName =? AND statuss=?;",
+    [authData.user.restname,"Pending"],
     (err, rows, fields) => {
       if (rows.length > 0) {
         
@@ -200,32 +271,102 @@ console.log('hello')
     }
   );
 }})});
-app.post('/add', (req, res) => {
+
+app.get("/admingetrestrauntss",verifyToken ,(req, res) => {
+  
+  
+  jwt.verify(req.token,'superadminkey',(err,authData)=>{
+  if(err){
+    res.send('error')
+  } else{
+  console.log('hello')
+    mysqlconnec.query(
+      "SELECT * FROM reservations;",
+      [authData.user.restname,"Pending"],
+      (err, rows, fields) => {
+        if (rows.length > 0) {
+          
+          res.send(rows);
+          
+        } else {
+          console.log(err);
+          res.send("No ID found");
+        }
+      }
+    );
+  }})});
+app.get("/adminrestrauntss",verifyToken ,(req, res) => {
+  
+  
+  jwt.verify(req.token,'adminkey',(err,authData)=>{
+  if(err){
+    res.send('error')
+  } else{
+  console.log('hello')
+    mysqlconnec.query(
+      "SELECT * FROM reservations",
+      [authData.user.restname,"Pending"],
+      (err, rows, fields) => {
+        if (rows.length > 0) {
+          
+          res.send(rows);
+          
+        } else {
+          console.log(err);
+          res.send("No ID found");
+        }
+      }
+    );
+  }})});
+app.put('/Acceptreservation', (req, res) => {
   let emp = req.body;
   console.log("RESTADD Working");
-  console.log(emp.RestName);
+  console.log(emp.reservationid);
   var sql =
-    "INSERT INTO restaurants(RestName, Cuisine, Location, Rating) VALUES(?,?,?,?)";
+    "UPDATE reservations set statuss=? where reservationid=? ";
   mysqlconnec.query(
     sql,
     [
-      emp.RestName,
-      emp.Cuisine,
-      emp.Location,
-      emp.Rating
+      "Accept",
+      emp.id
     ],
     (err, row, fields) => {
       if (!err) {
         console.log(row);
         console.log("Working");
-        res.send("Restaurant Added!");
+        res.send("Reservation updated!");
       } else {
         console.log(err);
-        res.send("Ohho! Error Adding Restaurant");
+        res.send("Ohho! Error Reservation ");
       }
     }
   );
 });
+app.put('/Declinereservation', (req, res) => {
+  let emp = req.body;
+  console.log("RESTADD Working");
+  console.log(emp.reservationid);
+  var sql =
+    "UPDATE reservations set statuss=? where reservationid=? ";
+  mysqlconnec.query(
+    sql,
+    [
+      "Rejected",
+      emp.id
+    ],
+    (err, row, fields) => {
+      if (!err) {
+        console.log(row);
+        console.log("Working");
+        res.send("Reservation updated!");
+      } else {
+        console.log(err);
+        res.send("Ohho! Error Reservation ");
+      }
+    }
+  );
+});
+
 function verifyToken(req,res,next){
   const header=req.headers['authorization'];
   if(typeof header!== 'undefined'){
